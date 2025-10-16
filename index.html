@@ -5,22 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Navegação AR com GPS</title>
 
-    <!-- A-Frame + AR.js (versão estável com suporte GPS) -->
-    <!-- A-Frame itself -->
-    <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
-
-    <!-- Pure three.js code that the A-Frame components use for location-based AR -->
-    <script type='text/javascript' src='https://raw.githack.com/AR-js-org/AR.js/3.4.7/three.js/build/ar-threex-location-only.js'></script>
-
-    <!-- AR.js A-Frame components -->
-    <script type='text/javascript' src='https://raw.githack.com/AR-js-org/AR.js/3.4.7/aframe/build/aframe-ar.js'></script>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+    <script src="https://unpkg.com/aframe-gps-entity-place/dist/aframe-gps-entity-place.min.js"></script>
     
+    <script src="https://unpkg.com/geolib@3.3.4/lib/geolib.js"></script>
+
     <style>
-      body, html { margin: 0; overflow: hidden; height: 100%; }
+      body, html {
+        margin: 0;
+        overflow: hidden;
+        height: 100%;
+      }
+
       .info {
         position: fixed;
         bottom: 10px;
-        left: 0; right: 0;
+        left: 0;
+        right: 0;
         text-align: center;
         background: rgba(0, 0, 0, 0.6);
         color: #fff;
@@ -28,31 +30,114 @@
         padding: 10px;
         z-index: 2;
       }
+      
+      /* Novo estilo para o medidor de distância */
+      #distance-label {
+        position: fixed;
+        top: 10px; /* Posição no topo da tela */
+        left: 0;
+        right: 0;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.9);
+        color: #000;
+        font-family: sans-serif;
+        font-weight: bold;
+        padding: 8px;
+        z-index: 2;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      }
     </style>
   </head>
 
   <body>
-    <div class="info">📍 Aponte o celular e procure a seta 3D no ambiente</div>
+    <div id="distance-label">Carregando GPS...</div>
+    <div class="info">📍 Aponte o celular e procure o modelo 3D no ambiente</div>
 
     <a-scene
       embedded
-      xr-mode-ui="enabled: false"
+      vr-mode-ui="enabled: false"
       renderer="logarithmicDepthBuffer: true;"
-      arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best;"
+      arjs="sourceType: webcam; debugUIEnabled: false;"
     >
-      <!-- Câmera com GPS -->
       <a-camera gps-camera rotation-reader></a-camera>
 
-      <!-- Modelo 3D -->
       <a-entity
-       gps-entity-place="latitude: -8.182291; longitude: -34.924251;"
-       gltf-model="modelos/cubo.glb"
-        scale="2 2 2"
+        id="target-model"
+        gps-entity-place="latitude: -8.0476; longitude: -34.8770;"
+        gltf-model="modelos/Cubo.glb"
+        scale="3 3 3"
         rotation="0 180 0"
         animation="property: rotation; to: 0 360 0; loop: true; dur: 8000"
       ></a-entity>
-    </a-scene>   
-    
-    
+    </a-scene>
+
+    <script>
+      // Coordenadas do destino (deve ser o mesmo que gps-entity-place)
+      const DESTINATION_LAT = -8.0476;
+      const DESTINATION_LON = -34.8770;
+      const distanceLabel = document.getElementById('distance-label');
+
+      /**
+       * Componente A-Frame para calcular e exibir a distância até o alvo.
+       */
+      AFRAME.registerComponent('distance-meter', {
+        init: function() {
+          this.watchId = null;
+        },
+
+        play: function() {
+          // Inicia o monitoramento da posição do usuário
+          this.watchId = navigator.geolocation.watchPosition(
+            pos => {
+              const userLat = pos.coords.latitude;
+              const userLon = pos.coords.longitude;
+
+              // Usa a função getDistance do geolib para cálculo preciso
+              const distanceMeters = geolib.getDistance(
+                { latitude: userLat, longitude: userLon },
+                { latitude: DESTINATION_LAT, longitude: DESTINATION_LON }
+              );
+
+              // Formatação e exibição da distância
+              let distanceText;
+              if (distanceMeters < 1000) {
+                distanceText = `${distanceMeters.toFixed(1)} metros`;
+              } else {
+                distanceText = `${(distanceMeters / 1000).toFixed(2)} km`;
+              }
+
+              distanceLabel.textContent = `🎯 Distância: ${distanceText}`;
+
+              // Opção: Ajustar a escala do modelo 3D baseado na distância para mantê-lo visível
+              // Para grandes distâncias, o modelo deve ser maior.
+              const model = document.getElementById('target-model');
+              if (model) {
+                 // Aumenta a escala com a distância, ajustando por um fator (ex: 0.1)
+                 const scaleFactor = Math.max(3, distanceMeters * 0.1); 
+                 model.setAttribute('scale', `${scaleFactor} ${scaleFactor} ${scaleFactor}`);
+              }
+            },
+            err => {
+              distanceLabel.textContent = "⚠️ Erro GPS: " + err.message;
+            },
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+          );
+        },
+
+        pause: function() {
+          // Para de monitorar o GPS ao pausar o componente
+          if (this.watchId) {
+            navigator.geolocation.clearWatch(this.watchId);
+          }
+        },
+        remove: function() {
+          this.pause();
+        }
+      });
+
+      // Adiciona o novo componente à cena para iniciar o monitoramento
+      document.querySelector('a-scene').setAttribute('distance-meter', '');
+    </script>
   </body>
 </html>
