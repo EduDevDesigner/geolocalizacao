@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navegação AR Prototype</title>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-ar-nft@1.2.0/dist/aframe-ar-nft.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-gps-entity-place@1.9.2/dist/aframe-gps-entity-place.min.js"></script>
+    <style>
+      body, html { margin: 0; overflow: hidden; height: 100%; }
+      .label {
+        position: fixed;
+        bottom: 10px;
+        left: 0; right: 0;
+        text-align: center;
+        background: rgba(0,0,0,0.5);
+        color: white;
+        padding: 10px;
+        font-family: sans-serif;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="label">🔹 Aponte o celular e procure a seta 3D do destino</div>
+
+    <a-scene
+      vr-mode-ui="enabled: false"
+      embedded
+      arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;"
+      gps-camera rotation-reader>
+      
+      <!-- Seta 3D (use seu próprio .glb se quiser outro modelo) -->
+      <a-entity
+        gps-entity-place="latitude: -8.0476; longitude: -34.8770;"
+        gltf-model="https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models/2.0/Arrow/glTF/Arrow.gltf"
+        scale="3 3 3"
+        rotation="0 180 0"
+        animation="property: rotation; to: 0 540 0; loop: true; dur: 6000">
+      </a-entity>
+
+    </a-scene>
+  </body>
+</html>
