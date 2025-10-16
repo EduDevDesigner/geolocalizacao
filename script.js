@@ -14,7 +14,6 @@ navigator.geolocation.watchPosition(
   (err) => console.warn('Erro GPS:', err),
   { enableHighAccuracy: true }
 );
-
 distanciaEl.innerHTML = `
   Distância: ${dist.toFixed(1)} m<br>
   Precisão GPS: ±${accuracy.toFixed(1)} m
