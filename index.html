@@ -30,33 +30,23 @@
     <div class="info">📍 Aponte o celular e procure a seta 3D no ambiente</div>
 
     <a-scene
-      xr-mode-ui="enabled: false"
       embedded
-    arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: true;"
-     gps-camera rotation-reader
+      xr-mode-ui="enabled: false"
+      renderer="logarithmicDepthBuffer: true;"
+      arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best;"
     >
       <!-- Câmera com GPS -->
       <a-camera gps-camera rotation-reader></a-camera>
 
       <!-- Modelo 3D -->
       <a-entity
-  position="0 0 -2"
-  gltf-model="https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models/2.0/Arrow/glTF/Arrow.gltf"
-  scale="1 1 1"
-  rotation="0 180 0"
-  animation="property: rotation; to: 0 540 0; loop: true; dur: 6000">
-</a-entity>
-
-    </a-scene>
-
-    <script>
-      // Depuração — mostra coordenadas no console
-      navigator.geolocation.watchPosition(
-        pos => console.log("Lat:", pos.coords.latitude, "Lon:", pos.coords.longitude),
-        err => console.warn("Erro GPS:", err),
-        { enableHighAccuracy: true }
-      );
-    </script>
+       gps-entity-place="latitude: -8.182291; longitude: -34.924251;"
+       gltf-model="modelos/cubo.glb"
+        scale="0 1 1"
+        rotation="0 180 0"
+        animation="property: rotation; to: 0 360 0; loop: true; dur: 8000"
+      ></a-entity>
+    </a-scene>   
     
     
   </body>
