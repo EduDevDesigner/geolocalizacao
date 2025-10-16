@@ -2,7 +2,7 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <title>Navegação AR GPS Dinâmica</title>
+    <title>Navegação AR GPS Estável</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- A-Frame + AR.js -->
@@ -10,17 +10,14 @@
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.js"></script>
 
     <style>
-      body {
-        margin: 0;
-        overflow: hidden;
-      }
+      body { margin: 0; overflow: hidden; }
       #info {
         position: absolute;
         top: 10px;
         left: 50%;
         transform: translateX(-50%);
         color: white;
-        background: rgba(0, 0, 0, 0.6);
+        background: rgba(0,0,0,0.6);
         padding: 8px 14px;
         border-radius: 10px;
         font-family: sans-serif;
@@ -46,45 +43,54 @@
       const cena = document.querySelector("a-scene");
       let modelo = null;
       let destino = null;
+      let ultimaPosicao = null;
 
-      // Função para calcular coordenadas deslocadas (5 metros à frente)
+      // Desloca coordenadas alguns metros à frente
       function deslocarCoordenadas(lat, lon, distancia, direcaoGraus) {
         const R = 6378137;
         const dLat = (distancia * Math.cos((direcaoGraus * Math.PI) / 180)) / R;
-        const dLon =
-          (distancia * Math.sin((direcaoGraus * Math.PI) / 180)) /
-          (R * Math.cos((lat * Math.PI) / 180));
-
-        const novaLat = lat + dLat * (180 / Math.PI);
-        const novaLon = lon + dLon * (180 / Math.PI);
-        return { lat: novaLat, lon: novaLon };
+        const dLon = (distancia * Math.sin((direcaoGraus * Math.PI) / 180)) / (R * Math.cos((lat * Math.PI) / 180));
+        return {
+          lat: lat + dLat * (180 / Math.PI),
+          lon: lon + dLon * (180 / Math.PI),
+        };
       }
 
-      // Função para calcular distância entre dois pontos GPS
+      // Distância entre dois pontos GPS (em metros)
       function distanciaMetros(lat1, lon1, lat2, lon2) {
         const R = 6371000;
         const dLat = ((lat2 - lat1) * Math.PI) / 180;
         const dLon = ((lon2 - lon1) * Math.PI) / 180;
         const a =
-          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.sin(dLat / 2) ** 2 +
           Math.cos((lat1 * Math.PI) / 180) *
             Math.cos((lat2 * Math.PI) / 180) *
-            Math.sin(dLon / 2) *
-            Math.sin(dLon / 2);
+            Math.sin(dLon / 2) ** 2;
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
       }
 
-      // Inicializa o modelo quando a posição é obtida
+      // Filtro de estabilidade — evita variação de ruído do GPS
+      function posicaoEstavel(posAtual, ultima) {
+        if (!ultima) return true;
+        const dist = distanciaMetros(posAtual.lat, posAtual.lon, ultima.lat, ultima.lon);
+        return dist > 1; // só atualiza se mover mais de 1 metro
+      }
+
+      // Atualiza continuamente
       navigator.geolocation.watchPosition(
         (pos) => {
           const lat = pos.coords.latitude;
           const lon = pos.coords.longitude;
+          const atual = { lat, lon };
 
+          // Ignora pequenas oscilações
+          if (!posicaoEstavel(atual, ultimaPosicao)) return;
+          ultimaPosicao = atual;
+
+          // Define destino inicial a 5 metros à frente
           if (!destino) {
-            destino = deslocarCoordenadas(lat, lon, 5, 0); // 5 metros ao norte
-
-            // cria o modelo
+            destino = deslocarCoordenadas(lat, lon, 5, 0);
             modelo = document.createElement("a-entity");
             modelo.setAttribute("gps-entity-place", {
               latitude: destino.lat,
@@ -97,31 +103,23 @@
             cena.appendChild(modelo);
           }
 
-          const distancia = distanciaMetros(lat, lon, destino.lat, destino.lon);
-          info.textContent = `📍 Lat: ${lat.toFixed(
-            6
-          )}, Lon: ${lon.toFixed(
-            6
-          )} | Distância: ${distancia.toFixed(2)} m`;
+          const dist = distanciaMetros(lat, lon, destino.lat, destino.lon);
+          info.textContent = `📍 Distância: ${dist.toFixed(2)} m`;
 
-          // Se estiver a menos de 1 metro do destino, mover o alvo mais à frente
-          if (distancia < 1) {
+          // Se chegar perto, move o modelo 5m à frente novamente
+          if (dist < 1) {
             destino = deslocarCoordenadas(lat, lon, 5, 0);
             modelo.setAttribute("gps-entity-place", {
               latitude: destino.lat,
               longitude: destino.lon,
             });
-            info.textContent = "🎯 Novo destino definido a 5 metros!";
+            info.textContent = "🎯 Novo ponto a 5 m definido!";
           }
         },
         (err) => {
-          info.textContent = "Erro ao obter localização: " + err.message;
+          info.textContent = "Erro ao obter GPS: " + err.message;
         },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 10000,
-        }
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
       );
     </script>
   </body>
