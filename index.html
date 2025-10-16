@@ -9,8 +9,8 @@
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
     <script src="https://unpkg.com/aframe-gps-entity-place/dist/aframe-gps-entity-place.min.js"></script>
     
-    <script src="https://unpkg.com/geolib@3.3.4/lib/geolib.js"></script>
-
+    <script src="https://unpkg.com/geolib@3.3.4/lib/geolib.js"></script> 
+    
     <style>
       body, html {
         margin: 0;
@@ -31,10 +31,9 @@
         z-index: 2;
       }
       
-      /* Novo estilo para o medidor de distância */
       #distance-label {
         position: fixed;
-        top: 10px; /* Posição no topo da tela */
+        top: 10px;
         left: 0;
         right: 0;
         text-align: center;
@@ -51,7 +50,7 @@
   </head>
 
   <body>
-    <div id="distance-label">Carregando GPS...</div>
+    <div id="distance-label">Aguardando Geolocalização e Inicialização...</div>
     <div class="info">📍 Aponte o celular e procure o modelo 3D no ambiente</div>
 
     <a-scene
@@ -65,7 +64,7 @@
       <a-entity
         id="target-model"
         gps-entity-place="latitude: -8.0476; longitude: -34.8770;"
-        gltf-model="modelos/Cubo.glb"
+        gltf-model="modelos/seta.glb"
         scale="3 3 3"
         rotation="0 180 0"
         animation="property: rotation; to: 0 360 0; loop: true; dur: 8000"
@@ -73,71 +72,87 @@
     </a-scene>
 
     <script>
-      // Coordenadas do destino (deve ser o mesmo que gps-entity-place)
+      // Coordenadas do destino
       const DESTINATION_LAT = -8.0476;
       const DESTINATION_LON = -34.8770;
       const distanceLabel = document.getElementById('distance-label');
 
+      // Variáveis globais para o modelo
+      const model = document.getElementById('target-model');
+
       /**
-       * Componente A-Frame para calcular e exibir a distância até o alvo.
+       * Função de sucesso para o monitoramento de GPS
        */
-      AFRAME.registerComponent('distance-meter', {
-        init: function() {
-          this.watchId = null;
-        },
-
-        play: function() {
-          // Inicia o monitoramento da posição do usuário
-          this.watchId = navigator.geolocation.watchPosition(
-            pos => {
-              const userLat = pos.coords.latitude;
-              const userLon = pos.coords.longitude;
-
-              // Usa a função getDistance do geolib para cálculo preciso
-              const distanceMeters = geolib.getDistance(
-                { latitude: userLat, longitude: userLon },
-                { latitude: DESTINATION_LAT, longitude: DESTINATION_LON }
-              );
-
-              // Formatação e exibição da distância
-              let distanceText;
-              if (distanceMeters < 1000) {
-                distanceText = `${distanceMeters.toFixed(1)} metros`;
-              } else {
-                distanceText = `${(distanceMeters / 1000).toFixed(2)} km`;
-              }
-
-              distanceLabel.textContent = `🎯 Distância: ${distanceText}`;
-
-              // Opção: Ajustar a escala do modelo 3D baseado na distância para mantê-lo visível
-              // Para grandes distâncias, o modelo deve ser maior.
-              const model = document.getElementById('target-model');
-              if (model) {
-                 // Aumenta a escala com a distância, ajustando por um fator (ex: 0.1)
-                 const scaleFactor = Math.max(3, distanceMeters * 0.1); 
-                 model.setAttribute('scale', `${scaleFactor} ${scaleFactor} ${scaleFactor}`);
-              }
-            },
-            err => {
-              distanceLabel.textContent = "⚠️ Erro GPS: " + err.message;
-            },
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
-          );
-        },
-
-        pause: function() {
-          // Para de monitorar o GPS ao pausar o componente
-          if (this.watchId) {
-            navigator.geolocation.clearWatch(this.watchId);
-          }
-        },
-        remove: function() {
-          this.pause();
+      function successCallback(pos) {
+        // Verifica se a biblioteca geolib carregou
+        if (typeof geolib === 'undefined') {
+             distanceLabel.textContent = "ERRO FATAL: geolib não carregado.";
+             console.error("Geolib não encontrado. Verifique a URL do script.");
+             return;
         }
-      });
 
-      // Adiciona o novo componente à cena para iniciar o monitoramento
-      document.querySelector('a-scene').setAttribute('distance-meter', '');
+        const userLat = pos.coords.latitude;
+        const userLon = pos.coords.longitude;
+        
+        // 1. Cálculo da Distância
+        const distanceMeters = geolib.getDistance(
+          { latitude: userLat, longitude: userLon },
+          { latitude: DESTINATION_LAT, longitude: DESTINATION_LON }
+        );
+
+        // 2. Formatação e Exibição da Distância
+        let distanceText;
+        if (distanceMeters < 1000) {
+          distanceText = `${distanceMeters.toFixed(1)} metros`;
+        } else {
+          distanceText = `${(distanceMeters / 1000).toFixed(2)} km`;
+        }
+        
+        distanceLabel.textContent = `🎯 Distância: ${distanceText}`;
+        
+        // 3. Ajuste de Escala Dinâmico (para visibilidade)
+        if (model) {
+           // Define um fator de escala baseado na distância (mantendo um mínimo de 3)
+           // Isso ajuda o modelo a ser visível mesmo se você estiver longe.
+           const scaleFactor = Math.max(3, distanceMeters * 0.05); 
+           model.setAttribute('scale', `${scaleFactor} ${scaleFactor} ${scaleFactor}`);
+        }
+        
+        // Console log para depuração
+        console.log(`📍 Lat: ${userLat}, Lon: ${userLon} | Distância: ${distanceMeters.toFixed(2)}m`);
+      }
+
+      /**
+       * Função de erro para o monitoramento de GPS
+       */
+      function errorCallback(err) {
+        let errorMsg = "⚠️ ERRO GPS DESCONHECIDO";
+        
+        switch (err.code) {
+          case err.PERMISSION_DENIED:
+            errorMsg = "⚠️ PERMISSÃO NEGADA. Habilite a Localização para este site.";
+            break;
+          case err.POSITION_UNAVAILABLE:
+            errorMsg = "⚠️ Localização Indisponível. Sinal GPS fraco.";
+            break;
+          case err.TIMEOUT:
+            errorMsg = "⚠️ Tempo esgotado. Verifique sua conexão e sinal GPS.";
+            break;
+        }
+        distanceLabel.textContent = errorMsg;
+        console.error("ERRO GPS:", err.message, "Código:", err.code);
+      }
+
+      // Inicia o monitoramento da posição do usuário
+      navigator.geolocation.watchPosition(
+        successCallback,
+        errorCallback,
+        { 
+          enableHighAccuracy: true, 
+          maximumAge: 0, 
+          timeout: 10000 // Aumentamos o tempo limite para 10 segundos
+        }
+      );
     </script>
   </body>
 </html>
