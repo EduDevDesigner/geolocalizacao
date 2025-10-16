@@ -56,5 +56,20 @@
         { enableHighAccuracy: true }
       );
     </script>
+    
+    <script>
+     navigator.mediaDevices.getUserMedia({
+     video: {
+     width: { ideal: 1280 },
+     height: { ideal: 720 },
+     facingMode: 'environment'
+  }
+})
+.then(stream => {
+  const video = document.querySelector('video');
+  if (video) video.srcObject = stream;
+})
+.catch(console.error);
+</script>
   </body>
 </html>
