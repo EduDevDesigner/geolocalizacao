@@ -5,64 +5,56 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Navegação AR com GPS</title>
 
-    <!-- A-Frame + AR.js (com suporte a GPS) -->
+    <!-- A-Frame + AR.js + GPS -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
-    <script src="https://unpkg.com/aframe-gps-entity-place/dist/aframe-gps-entity-place.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.7/aframe/build/aframe-ar.min.js"></script>
+    <script src="https://unpkg.com/aframe-gps-entity-place@1.9.2/dist/aframe-gps-entity-place.min.js"></script>
 
     <style>
       html, body {
         margin: 0;
-        padding: 0;
-        overflow: hidden;
         height: 100%;
-        width: 100%;
+        overflow: hidden;
         background: #000;
       }
 
-      /* HUD fixo sobre a câmera */
       #hud {
         position: fixed;
         bottom: 0;
         left: 0;
         right: 0;
-        background: rgba(0, 0, 0, 0.6);
+        background: rgba(0, 0, 0, 0.7);
         color: white;
         text-align: center;
         padding: 12px;
         font-family: Arial, sans-serif;
-        font-size: 16px;
-        z-index: 99999 !important;
-        pointer-events: none;
+        z-index: 9999;
       }
 
       #distancia {
-        display: block;
-        margin-top: 5px;
-        font-weight: bold;
         color: #00ffcc;
+        font-weight: bold;
+        margin-top: 5px;
       }
     </style>
   </head>
 
   <body>
-    <!-- HUD fixo -->
     <div id="hud">
-      📍 Aponte o celular e procure o modelo 3D no ambiente
+      📍 Aponte o celular e procure o modelo 3D<br />
       <span id="distancia">Carregando GPS...</span>
     </div>
 
-    <!-- Cena AR -->
     <a-scene
       vr-mode-ui="enabled: false"
       embedded
       renderer="logarithmicDepthBuffer: true;"
-      arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best;"
+      arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
     >
       <!-- Câmera com GPS -->
       <a-camera gps-camera rotation-reader></a-camera>
 
-      <!-- Modelo local -->
+      <!-- Modelo 3D local -->
       <a-entity
         id="modelo"
         gps-entity-place="latitude: -8.0476; longitude: -34.8770;"
@@ -77,7 +69,6 @@
       const destino = { lat: -8.0476, lon: -34.8770 };
       const distanciaEl = document.getElementById("distancia");
 
-      // Função para calcular distância em metros
       function calcularDistancia(lat1, lon1, lat2, lon2) {
         const R = 6371e3;
         const φ1 = (lat1 * Math.PI) / 180;
@@ -91,7 +82,6 @@
         return R * c;
       }
 
-      // Atualiza distância em tempo real
       if ("geolocation" in navigator) {
         navigator.geolocation.watchPosition(
           (pos) => {
@@ -104,18 +94,11 @@
             distanciaEl.textContent = "⚠️ Erro ao obter localização.";
             console.warn("Erro GPS:", err);
           },
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 7000 }
         );
       } else {
         distanciaEl.textContent = "❌ GPS não suportado neste dispositivo.";
       }
-
-      // Força HUD ficar visível mesmo se AR.js alterar o z-index
-      const manterHUD = () => {
-        const hud = document.getElementById("hud");
-        hud.style.zIndex = "99999";
-      };
-      setInterval(manterHUD, 1000);
     </script>
   </body>
 </html>
