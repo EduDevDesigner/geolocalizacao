@@ -3,16 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Navegação AR com GPS + Distância</title>
+    <title>Navegação AR com GPS</title>
 
-    <!-- A-Frame itself -->
-<script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-
-<!-- Pure three.js code that the A-Frame components use for location-based AR -->
-<script type='text/javascript' src='https://raw.githack.com/AR-js-org/AR.js/3.4.7/three.js/build/ar-threex-location-only.js'></script>
-
-<!-- AR.js A-Frame components -->
-<script type='text/javascript' src='https://raw.githack.com/AR-js-org/AR.js/3.4.7/aframe/build/aframe-ar.js'></script>
+    <!-- A-Frame + AR.js (com suporte a GPS) -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+    <script src="https://unpkg.com/aframe-gps-entity-place/dist/aframe-gps-entity-place.min.js"></script>
 
     <style>
       body, html {
@@ -31,32 +27,25 @@
         color: #fff;
         font-family: sans-serif;
         padding: 10px;
-        z-index: 2;
+        z-index: 1000;
       }
 
-      .distancia {
-        position: fixed;
-        top: 10px;
-        left: 0;
-        right: 0;
-        text-align: center;
-        background: rgba(0, 0, 0, 0.5);
-        color: #00ff88;
-        font-family: monospace;
-        font-size: 18px;
-        padding: 6px;
-        z-index: 3;
+      .distance {
+        font-weight: bold;
+        font-size: 1.1em;
       }
     </style>
   </head>
 
   <body>
-    <div class="distancia">Calculando distância...</div>
-    <div class="info">📍 Aponte o celular e procure o modelo 3D no ambiente</div>
+    <div class="info">
+      📍 Aponte o celular e procure o modelo 3D no ambiente<br />
+      <span class="distance">Calculando distância...</span>
+    </div>
 
     <a-scene
       embedded
-      xr-mode-ui="enabled: false"
+      vr-mode-ui="enabled: false"
       renderer="logarithmicDepthBuffer: true;"
       arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best;"
     >
@@ -75,42 +64,40 @@
     </a-scene>
 
     <script>
-      // Coordenadas do modelo (ajuste conforme seu ponto de destino)
+      // Coordenadas do modelo (definidas manualmente)
       const destino = { lat: -8.0476, lon: -34.8770 };
-      const distanciaDiv = document.querySelector('.distancia');
+      const distanciaTexto = document.querySelector(".distance");
 
-      // Função para calcular distância entre 2 coordenadas (fórmula de Haversine)
+      // Função para calcular distância entre dois pontos GPS
       function calcularDistancia(lat1, lon1, lat2, lon2) {
-        const R = 6371000; // raio da Terra em metros
-        const toRad = (v) => (v * Math.PI) / 180;
-        const dLat = toRad(lat2 - lat1);
-        const dLon = toRad(lon2 - lon1);
+        const R = 6371e3; // Raio da Terra em metros
+        const φ1 = (lat1 * Math.PI) / 180;
+        const φ2 = (lat2 * Math.PI) / 180;
+        const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+        const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
         const a =
-          Math.sin(dLat / 2) ** 2 +
-          Math.cos(toRad(lat1)) *
-            Math.cos(toRad(lat2)) *
-            Math.sin(dLon / 2) ** 2;
+          Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+          Math.cos(φ1) * Math.cos(φ2) *
+          Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
+
+        return R * c; // metros
       }
 
-      // Atualiza distância conforme GPS muda
+      // Atualiza a distância em tempo real
       navigator.geolocation.watchPosition(
-        (pos) => {
+        pos => {
           const lat = pos.coords.latitude;
           const lon = pos.coords.longitude;
-          const distancia = calcularDistancia(lat, lon, destino.lat, destino.lon);
+          const dist = calcularDistancia(lat, lon, destino.lat, destino.lon);
 
-          distanciaDiv.textContent =
-            distancia < 5
-              ? "📍 Você chegou ao destino!"
-              : `📏 Distância até o modelo: ${distancia.toFixed(1)} m`;
-
-          console.log(`Lat: ${lat}, Lon: ${lon}, Distância: ${distancia.toFixed(1)} m`);
+          distanciaTexto.textContent = `📏 Distância até o modelo: ${dist.toFixed(1)} metros`;
+          distanciaTexto.style.display = "block";
         },
-        (err) => {
-          console.warn("⚠️ Erro ao obter GPS:", err);
-          distanciaDiv.textContent = "⚠️ GPS não disponível";
+        err => {
+          distanciaTexto.textContent = "⚠️ Erro ao obter localização.";
+          console.warn("Erro GPS:", err);
         },
         { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
       );
