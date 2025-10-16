@@ -108,7 +108,7 @@
 
           // Se chegar perto, move o modelo 5m à frente novamente
           if (dist < 1) {
-            destino = deslocarCoordenadas(lat, lon, 5, 0);
+            destino = deslocarCoordenadas(lat, lon, 2, 0);
             modelo.setAttribute("gps-entity-place", {
               latitude: destino.lat,
               longitude: destino.lon,
