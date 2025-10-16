@@ -2,10 +2,10 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <title>Navegação AR GPS Estável</title>
+    <title>AR GPS - Modelo a 2 Metros</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- A-Frame + AR.js -->
+    <!-- A-Frame + AR.js (com suporte GPS) -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.js"></script>
 
@@ -16,24 +16,24 @@
         top: 10px;
         left: 50%;
         transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.6);
         color: white;
-        background: rgba(0,0,0,0.6);
-        padding: 8px 14px;
-        border-radius: 10px;
+        padding: 10px 16px;
+        border-radius: 8px;
         font-family: sans-serif;
-        font-size: 14px;
+        z-index: 10;
       }
     </style>
   </head>
 
   <body>
-    <div id="info">Obtendo localização...</div>
+    <div id="info">📍 Obtendo localização...</div>
 
     <a-scene
-      xr-mode-ui="enabled: false"
       embedded
+      vr-mode-ui="enabled: false"
       renderer="antialias: true; alpha: true;"
-      arjs="sourceType: webcam; videoTexture: true; trackingMethod: best; debugUIEnabled: false;"
+      arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
     >
       <a-camera gps-camera rotation-reader></a-camera>
     </a-scene>
@@ -41,22 +41,22 @@
     <script>
       const info = document.getElementById("info");
       const cena = document.querySelector("a-scene");
-      let modelo = null;
-      let destino = null;
-      let ultimaPosicao = null;
+      let modeloCriado = false;
 
-      // Desloca coordenadas alguns metros à frente
+      // Função para deslocar latitude/longitude uma distância (em metros)
       function deslocarCoordenadas(lat, lon, distancia, direcaoGraus) {
-        const R = 6378137;
+        const R = 6378137; // raio da Terra em metros
         const dLat = (distancia * Math.cos((direcaoGraus * Math.PI) / 180)) / R;
-        const dLon = (distancia * Math.sin((direcaoGraus * Math.PI) / 180)) / (R * Math.cos((lat * Math.PI) / 180));
+        const dLon =
+          (distancia * Math.sin((direcaoGraus * Math.PI) / 180)) /
+          (R * Math.cos((lat * Math.PI) / 180));
         return {
           lat: lat + dLat * (180 / Math.PI),
           lon: lon + dLon * (180 / Math.PI),
         };
       }
 
-      // Distância entre dois pontos GPS (em metros)
+      // Distância em metros (fórmula haversine)
       function distanciaMetros(lat1, lon1, lat2, lon2) {
         const R = 6371000;
         const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -70,56 +70,54 @@
         return R * c;
       }
 
-      // Filtro de estabilidade — evita variação de ruído do GPS
-      function posicaoEstavel(posAtual, ultima) {
-        if (!ultima) return true;
-        const dist = distanciaMetros(posAtual.lat, posAtual.lon, ultima.lat, ultima.lon);
-        return dist > 1; // só atualiza se mover mais de 1 metro
-      }
-
-      // Atualiza continuamente
-      navigator.geolocation.watchPosition(
+      // Assim que carregar a posição inicial
+      navigator.geolocation.getCurrentPosition(
         (pos) => {
           const lat = pos.coords.latitude;
           const lon = pos.coords.longitude;
-          const atual = { lat, lon };
+          const acc = pos.coords.accuracy;
 
-          // Ignora pequenas oscilações
-          if (!posicaoEstavel(atual, ultimaPosicao)) return;
-          ultimaPosicao = atual;
+          info.textContent = `📍 Localização inicial obtida (±${acc.toFixed(1)} m)`;
 
-          // Define destino inicial a 5 metros à frente
-          if (!destino) {
-            destino = deslocarCoordenadas(lat, lon, 5, 0);
-            modelo = document.createElement("a-entity");
-            modelo.setAttribute("gps-entity-place", {
-              latitude: destino.lat,
-              longitude: destino.lon,
-            });
-            modelo.setAttribute("gltf-model", "./modelos/Cubo.glb");
-            modelo.setAttribute("scale", "1 1 1");
-            modelo.setAttribute("rotation", "0 180 0");
-            modelo.setAttribute("animation", "property: rotation; to: 0 540 0; loop: true; dur: 4000");
-            cena.appendChild(modelo);
-          }
+          // Define o modelo 2 metros à frente (0° = norte)
+          const destino = deslocarCoordenadas(lat, lon, 2, 0);
 
-          const dist = distanciaMetros(lat, lon, destino.lat, destino.lon);
-          info.textContent = `📍 Distância: ${dist.toFixed(2)} m`;
+          // Cria o modelo
+          const modelo = document.createElement("a-entity");
+          modelo.setAttribute("id", "modelo3d");
+          modelo.setAttribute("gps-entity-place", {
+            latitude: destino.lat,
+            longitude: destino.lon,
+          });
+          modelo.setAttribute("gltf-model", "./modelos/seta.glb"); // seu modelo local
+          modelo.setAttribute("scale", "1 1 1");
+          modelo.setAttribute("rotation", "0 180 0");
+          modelo.setAttribute("animation", "property: rotation; to: 0 360 0; loop: true; dur: 5000");
+          cena.appendChild(modelo);
 
-          // Se chegar perto, move o modelo 5m à frente novamente
-          if (dist < 1) {
-            destino = deslocarCoordenadas(lat, lon, 2, 0);
-            modelo.setAttribute("gps-entity-place", {
-              latitude: destino.lat,
-              longitude: destino.lon,
-            });
-            info.textContent = "🎯 Novo ponto a 5 m definido!";
-          }
+          modeloCriado = true;
+
+          // Agora monitora distância em tempo real
+          navigator.geolocation.watchPosition(
+            (pos2) => {
+              const dist = distanciaMetros(
+                pos2.coords.latitude,
+                pos2.coords.longitude,
+                destino.lat,
+                destino.lon
+              );
+              info.textContent = `📏 Distância do modelo: ${dist.toFixed(2)} m`;
+            },
+            (err) => {
+              info.textContent = "Erro ao atualizar GPS: " + err.message;
+            },
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+          );
         },
         (err) => {
-          info.textContent = "Erro ao obter GPS: " + err.message;
+          info.textContent = "❌ Erro ao obter localização: " + err.message;
         },
-        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+        { enableHighAccuracy: true, timeout: 10000 }
       );
     </script>
   </body>
