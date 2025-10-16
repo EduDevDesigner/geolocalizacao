@@ -46,23 +46,30 @@
     </div>
 
     <a-scene
-      vr-mode-ui="enabled: false"
+      xr-mode-ui="enabled: false"
       embedded
       renderer="logarithmicDepthBuffer: true;"
       arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
     >
       <!-- Câmera com GPS -->
-      <a-camera gps-camera rotation-reader></a-camera>
+     <a-camera
+       gps-camera="gpsMinDistance: 5; gpsTimeInterval: 3000;"
+       rotation-reader>
+     </a-camera>
+
 
       <!-- Modelo 3D local -->
       <a-entity
         id="modelo"
         gps-entity-place="latitude: -8.0476; longitude: -34.8770;"
         gltf-model="modelos/Cubo.glb"
-        scale="1 1 1"
+        scale="1.5 1.5 1.5"
+        position="0 -1 0"
         rotation="0 180 0"
-        animation="property: rotation; to: 0 360 0; loop: true; dur: 8000"
-      ></a-entity>
+        visible="false"
+        animation="property: rotation; to: 0 360 0; loop: true; dur: 8000">
+      </a-entity>
+
     </a-scene>
 
     <script>
