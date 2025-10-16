@@ -31,7 +31,7 @@
 
     <a-scene
       embedded
-      vr-mode-ui="enabled: false"
+      xr-mode-ui="enabled: false"
       renderer="antialias: true; alpha: true;"
       arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
     >
@@ -89,7 +89,7 @@
             latitude: destino.lat,
             longitude: destino.lon,
           });
-          modelo.setAttribute("gltf-model", "./modelos/seta.glb"); // seu modelo local
+          modelo.setAttribute("gltf-model", "./modelos/Cubo.glb"); // seu modelo local
           modelo.setAttribute("scale", "1 1 1");
           modelo.setAttribute("rotation", "0 180 0");
           modelo.setAttribute("animation", "property: rotation; to: 0 360 0; loop: true; dur: 5000");
